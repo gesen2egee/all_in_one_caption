@@ -1,3 +1,8 @@
+集合wd tagger v3、aesthetic-predictor-v2-5和joycaption
+
+謝謝imgutils、Initial_Elk5162的腳本
+
+
 使用方式：
 
 
