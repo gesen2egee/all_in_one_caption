@@ -7,6 +7,7 @@ requests
 tqdm
 accelerate
 sentencepiece
+bitsandbytes
 onnxruntime-gpu==1.18.0
 aesthetic-predictor-v2-5
 dghs-imgutils[gpu]
