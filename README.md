@@ -22,3 +22,12 @@ python caption.py "資料集目錄" --folder_name
 
 --folder_name = 前置子目錄名
 
+
+需求VRAM 12G
+
+12 s/it on 3080
+
+打標參考
+
+![image](https://github.com/user-attachments/assets/2063eff4-0eed-402d-b91a-bc1c36476432)
+
