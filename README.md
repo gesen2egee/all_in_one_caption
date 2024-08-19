@@ -29,5 +29,7 @@ python caption.py "資料集目錄" --folder_name
 
 打標參考
 
+![image](https://github.com/user-attachments/assets/4f4f4488-e036-4aaa-9324-829f18cb7491)
+
 ![image](https://github.com/user-attachments/assets/2063eff4-0eed-402d-b91a-bc1c36476432)
 
