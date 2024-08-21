@@ -16,9 +16,12 @@ python -m venv venv
 
 pip install -r requirements.txt
 
-python caption.py "資料集目錄" --folder_name 
+python caption.py "資料集目錄" --folder_name --del_tag
 
 
+--del_tag 刪除在子資料夾>70%的WD標
+
+--folder_name 用子資料夾數字後面的詞當作的第一個詞
 
 --folder_name = 前置子目錄名
 
