@@ -155,11 +155,11 @@ def process_image(image_path, args):
 		
     image = resize_image(image_path)
     joy_caption = stream_chat(image)
-    rating, features, chars, embedding = get_wd14_tags(image, character_threshold=0.6, general_threshold=0.27, drop_overlap=True, fmt=('rating', 'general', 'character', 'embedding'))      
+    rating, features, chars, embedding = get_wd14_tags(image, character_threshold=0.6, general_threshold=0.27, drop_overlap=True, fmt=('rating', 'general', 'character', 'embedding'), general_mcut_enabled = True)      
     wd_caption = tags_to_text(features, use_escape=False, use_spaces=True)
     rating_tag = max(rating, key=rating.get)
     aesthetic_tag = get_aesthetic_tag(image)
-    tags_text = f"{wd_caption}, rating:{rating_tag}, {aesthetic_tag}, {joy_caption}"
+    tags_text = f"{joy_caption}, rating:{rating_tag}, {aesthetic_tag}, the image is composed of the following: {wd_caption}"
 	
     parent_folder = Path(image_path).parent.name
     if args.folder_name and "_" in parent_folder and parent_folder.split("_")[0].isdigit():
