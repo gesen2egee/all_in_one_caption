@@ -51,7 +51,6 @@ def resize_image(image_path, max_size=448):
     return image
 
 def process_image(image_path, args, wd_caption):
-    image = resize_image(image_path)
     tags_text = f"{wd_caption}"
 	
     parent_folder = Path(image_path).parent.name
