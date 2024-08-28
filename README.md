@@ -1,3 +1,26 @@
+(更新)
+
+根據
+
+https://civitai.com/articles/6792/flux-captioning-differences-training-diary
+
+https://civitai.com/articles/6982
+
+
+FLUX訓練更適合用簡單標
+
+增加wdcaption.py
+
+python wdcaption.py "資料集目錄" --folder_name --del_tag
+
+用WD自動刪除出現頻率太高或太相關的標
+
+
+
+
+===========================================================================
+
+
 集合wd tagger v3、aesthetic-predictor-v2-5和joycaption
 
 謝謝imgutils、Initial_Elk5162的腳本
