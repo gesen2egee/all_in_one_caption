@@ -80,7 +80,7 @@ def find_and_process_images(directory, args):
                 image = resize_image(image_path)
                 rating, features, _, _ = get_wd14_tags(image, character_threshold=0.6, general_threshold=0.27, drop_overlap=True, fmt=('rating', 'general', 'character', 'embedding'))      
                 wd_caption = tags_to_text(features, use_escape=False, use_spaces=True)
-                wd_captions[image_path] = wd_caption + f", rating:{max(rating, key=rating.get)}" + f", {get_aesthetic_tag(image)}"
+                wd_captions[image_path] = wd_caption + f", {max(rating, key=rating.get)}" + f", {get_aesthetic_tag(image)}"
                 tags = wd_caption.split(', ')
                 for tag in tags:
                     tag_dict[tag] = tag_dict.get(tag, 0) + 1
