@@ -92,7 +92,7 @@ def find_and_process_images(directory, args):
         del_tag = [tag for tag, count in tag_dict.items() if tag != 'caption_count' and count > tag_dict['caption_count'] * 0.5]
         print(del_tag)
         
-        for image_path in tqdm(image_paths, desc="應用過濾標籤"):
+        for image_path in image_paths:
             try:
                 wd_caption = wd_captions[image_path]
                 tags = wd_caption.split(', ')
