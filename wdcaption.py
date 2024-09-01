@@ -5,7 +5,7 @@ import os
 import requests
 import traceback
 from aesthetic_predictor_v2_5 import convert_v2_5_from_siglip
-from imgutils.tagging import get_wd14_tags, tags_to_text
+from imgutils.tagging import get_wd14_tags, tags_to_text, drop_blacklisted_tags, drop_basic_character_tags
 from imgutils.validate import anime_completeness
 from tqdm import tqdm
 import fnmatch
@@ -70,6 +70,7 @@ def find_and_process_images(directory, args):
     for root, dirs, files in os.walk(directory):
         image_paths = []
         tag_dict = {}
+        del_tag = []
         for ext in extensions:
             for file in files:
                 if fnmatch.fnmatchcase(file, ext) or fnmatch.fnmatchcase(file, ext.upper()):
@@ -78,7 +79,9 @@ def find_and_process_images(directory, args):
         for image_path in tqdm(image_paths, desc=f"處理圖片 {root}"):
             try:
                 image = resize_image(image_path)
-                rating, features, _, _ = get_wd14_tags(image, character_threshold=0.6, general_threshold=0.27, drop_overlap=True, fmt=('rating', 'general', 'character', 'embedding'))      
+                rating, features, _, _ = get_wd14_tags(image, character_threshold=0.6, general_threshold=0.27, drop_overlap=True, fmt=('rating', 'general', 'character', 'embedding'))
+                if args.del_tag:
+                    features = drop_blacklisted_tags(drop_basic_character_tags(features))
                 wd_caption = tags_to_text(features, use_escape=False, use_spaces=True) + f", {max(rating, key=rating.get)}" + f", {get_aesthetic_tag(image)}"
                 wd_captions[image_path] = tags = wd_caption.split(', ')                
                 for tag in tags:
@@ -88,22 +91,22 @@ def find_and_process_images(directory, args):
             except Exception as e:
                 print(f"Failed to process image {image_path}: {e}")
                 traceback.print_exc()
-
-        del_tag = [tag for tag, count in tag_dict.items() if tag != 'caption_count' and count > tag_dict['caption_count'] * 0.5]
-        keep_tag = [tag for tag, count in sorted(tag_dict.items(), key=lambda item: item[1], reverse=True) if tag not in del_tag and tag != 'caption_count']
-        
-        for i, tag in enumerate(keep_tag):
-            tag_count = sum([1 for caption_tags in wd_captions.values() if tag in caption_tags])
-            if tag_count < 3 or tag in del_tag:
-                continue
-            for other_tag in keep_tag[i+1:]:
-                other_tag_count = sum([1 for caption_tags in wd_captions.values() if tag in caption_tags and other_tag in caption_tags])
-                if other_tag_count < 4 or other_tag in del_tag:
+        if args.del_tag:
+            del_tag = [tag for tag, count in tag_dict.items() if tag != 'caption_count' and count > tag_dict['caption_count'] * 0.5]
+            keep_tag = [tag for tag, count in sorted(tag_dict.items(), key=lambda item: item[1], reverse=True) if tag not in del_tag and tag != 'caption_count']
+	        
+            for i, tag in enumerate(keep_tag):
+                tag_count = sum([1 for caption_tags in wd_captions.values() if tag in caption_tags])
+                if tag_count < 3 or tag in del_tag:
                     continue
-                if other_tag_count >= tag_count * 0.85:
-                    del_tag.append(other_tag)
-                    print(f"{other_tag} added to del_tag, it appears in captions which is more than 90% of {tag}")
-        print(f"del_tag: {del_tag}")
+                for other_tag in keep_tag[i+1:]:
+                    other_tag_count = sum([1 for caption_tags in wd_captions.values() if tag in caption_tags and other_tag in caption_tags])
+                    if other_tag_count < 4 or other_tag in del_tag:
+                        continue
+                    if other_tag_count >= tag_count * 0.85:
+                        del_tag.append(other_tag)
+                        print(f"{other_tag} added to del_tag, it appears in captions which is more than 90% of {tag}")
+            print(f"del_tag: {del_tag}")
         
         for image_path in image_paths:
             try:
