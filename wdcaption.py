@@ -75,7 +75,7 @@ def find_and_process_images(directory, args):
             for file in files:
                 if fnmatch.fnmatchcase(file, ext) or fnmatch.fnmatchcase(file, ext.upper()):
                     image_paths.append(os.path.join(root, file))
-
+                        
         for image_path in tqdm(image_paths, desc=f"處理圖片 {root}"):
             try:
                 image = resize_image(image_path)
@@ -91,21 +91,22 @@ def find_and_process_images(directory, args):
             except Exception as e:
                 print(f"Failed to process image {image_path}: {e}")
                 traceback.print_exc()
+
         if args.del_tag:
-            del_tag = [tag for tag, count in tag_dict.items() if tag != 'caption_count' and count > tag_dict['caption_count'] * 0.5]
+            del_tag = [tag for tag, count in tag_dict.items() if tag != 'caption_count' and (count > tag_dict['caption_count'] * 0.5)]
             keep_tag = [tag for tag, count in sorted(tag_dict.items(), key=lambda item: item[1], reverse=True) if tag not in del_tag and tag != 'caption_count']
 	        
-            for i, tag in enumerate(keep_tag):
-                tag_count = sum([1 for caption_tags in wd_captions.values() if tag in caption_tags])
-                if tag_count < 3 or tag in del_tag:
-                    continue
-                for other_tag in keep_tag[i+1:]:
-                    other_tag_count = sum([1 for caption_tags in wd_captions.values() if tag in caption_tags and other_tag in caption_tags])
-                    if other_tag_count < 4 or other_tag in del_tag:
-                        continue
-                    if other_tag_count >= tag_count * 0.85:
-                        del_tag.append(other_tag)
-                        print(f"{other_tag} added to del_tag, it appears in captions which is more than 90% of {tag}")
+            #for i, tag in enumerate(keep_tag):
+                #tag_count = sum([1 for caption_tags in wd_captions.values() if tag in caption_tags])
+                #if tag_count < 3 or tag in del_tag:
+                #    continue
+                #for other_tag in keep_tag[i+1:]:
+                    #other_tag_count = sum([1 for caption_tags in wd_captions.values() if tag in caption_tags and other_tag in caption_tags])
+                    #if other_tag_count < 4 or other_tag in del_tag:
+                    #    continue
+                    #if other_tag_count >= tag_count * 0.85:
+                    #    del_tag.append(other_tag)
+                    #    print(f"{other_tag} added to del_tag, it appears in captions which is more than 90% of {tag}")
             print(f"del_tag: {del_tag}")
         
         for image_path in image_paths:
