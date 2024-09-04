@@ -99,7 +99,7 @@ def transform_caption(caption):
     #            original_tags.append(tag)
     #if 'solo' in caption:
     #    original_tags = categorize_and_combine(original_tags)
-    combined_tags = transformed_tags    
+    random.shuffle(transformed_tags)
     return ', '.join(combined_tags)
 
 def run_example(task_prompt, image, text_input=None):
@@ -271,7 +271,17 @@ def process_image(image_path, folder_chartag, args):
         )     
         with open(tag_file_path, 'w', encoding='utf-8') as f:
             f.write(tags_text.lower())
-
+            
+        try:
+            npz_path = Path(image_path).with_suffix('') 
+            if npz_path.name.endswith("_te"):
+                npz_path = npz_path.with_suffix(".npz") 
+                if npz_path.exists():
+                    os.remove(npz_path)
+                    print(f"已刪除檔案: {npz_path}")
+        except Exception as e:
+            print(f"發生錯誤: {e}")
+    
     except Exception as e:
         print(f"Failed to process image {image_path}: {e}")
         traceback.print_exc()
