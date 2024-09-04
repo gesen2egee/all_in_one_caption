@@ -100,7 +100,7 @@ def transform_caption(caption):
     #if 'solo' in caption:
     #    original_tags = categorize_and_combine(original_tags)
     random.shuffle(transformed_tags)
-    return ', '.join(combined_tags)
+    return ', '.join(transformed_tags)
 
 def run_example(task_prompt, image, text_input=None):
     if text_input is None:
