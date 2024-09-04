@@ -263,7 +263,6 @@ def process_image(image_path, folder_chartag, args):
         ratingtag = max(rating, key=rating.get)
         wd14_caption = wd14_caption + ', ' + boorutag
         wd14_caption = transform_caption(wd14_caption)
-        print(wd14_caption)
         more_detailed_caption, _ = run_example('<MORE_DETAILED_CAPTION>', image) 
         special_text = ' '.join([text.strip() for text in special_text.split(',') if text.strip()])
         tags_text = (
