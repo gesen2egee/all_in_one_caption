@@ -1,3 +1,17 @@
+(再更)
+
+新的florence-2微調自然語言 + WD說文解字
+
+使用 main_script.py
+
+python main_script.py "資料集目錄" --folder_name 
+
+對於FLUX原有不懂概念及姿勢服從應該更好
+
+如果已經安裝 需要重新安裝pip install -r requirements.txt
+
+
+
 (更新)
 
 根據
@@ -16,6 +30,7 @@ python wdcaption.py "資料集目錄" --folder_name --del_tag
 用WD自動刪除出現頻率太高或太相關的標
 
 
+--folder_name 用子資料夾數字後面的詞當作的第一個詞
 
 
 ===========================================================================
@@ -46,7 +61,6 @@ python caption.py "資料集目錄" --folder_name --del_tag
 
 --folder_name 用子資料夾數字後面的詞當作的第一個詞
 
---folder_name = 前置子目錄名
 
 
 需求VRAM 12G
