@@ -79,7 +79,6 @@ def cluster_and_move_images(image_dir, features, image_paths, class_num=20):
 if __name__ == "__main__":
     # 解析命令行參數
     parser = argparse.ArgumentParser(description="圖片聚類工具")
-    parser = argparse.ArgumentParser(description="圖片聚類工具")
     parser.add_argument('image_dir', type=str, help='指定圖片所在的目錄')
     parser.add_argument('--class', type=int, default=20, help='要分成幾個類別，預設為20')
     args = parser.parse_args()
