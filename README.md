@@ -1,3 +1,28 @@
+安裝方式：
+
+
+git clone https://github.com/gesen2egee/all_in_one_caption
+
+cd all_in_one_caption
+
+python -m venv venv
+
+.\venv\Scripts\activate (每次載入虛擬環境要用這個指令)
+
+pip install -r requirements.txt
+
+
+
+
+(更新)
+
+自動分類圖片
+
+python class.py "資料集目錄" --class 20
+
+用siglip將圖片依照提取特徵聚類，分成20類移動到子資料夾
+
+
 (再更)
 
 新的florence-2微調自然語言 + WD說文解字
@@ -41,18 +66,7 @@ python wdcaption.py "資料集目錄" --folder_name --del_tag
 謝謝imgutils、Initial_Elk5162的腳本
 
 
-使用方式：
 
-
-git clone https://github.com/gesen2egee/all_in_one_caption
-
-cd all_in_one_caption
-
-python -m venv venv
-
-.\venv\Scripts\activate (每次載入虛擬環境要用這個指令)
-
-pip install -r requirements.txt
 
 python caption.py "資料集目錄" --folder_name --del_tag
 
