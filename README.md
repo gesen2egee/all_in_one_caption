@@ -25,11 +25,15 @@ python class.py "資料集目錄" --class 20
 
 (再更)
 
-新的florence-2微調自然語言 + WD說文解字
+WD + 新的florence-2微調自然語言
 
 使用 main_script.py
 
-python main_script.py "資料集目錄" --folder_name 
+python main_script.py "資料集目錄" --folder_name  --del_tag
+
+--del_tag 刪除出現比例>50%的標
+--folder_name 用子資料夾數字後面的詞當作的第一個詞
+
 
 對於FLUX原有不懂概念及姿勢服從應該更好
 
