@@ -19,7 +19,7 @@ import traceback
 from datetime import datetime, timedelta
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-model_id = 'MiaoshouAI/Florence-2-base-PromptGen-v1.5'
+model_id = 'yayayaaa/florence-2-large-ft-moredetailed' #'MiaoshouAI/Florence-2-base-PromptGen-v1.5'
 model = AutoModelForCausalLM.from_pretrained(model_id, trust_remote_code=True).eval().to(device).half()
 processor = AutoProcessor.from_pretrained(model_id, trust_remote_code=True)
 
@@ -270,7 +270,6 @@ def process_image(image_path, args, wd_caption):
             for npz_file in Path(image_path).parent.glob(npz_pattern):
                 if npz_file.exists():
                     os.remove(npz_file)
-                    print(f"已刪除檔案: {npz_file}")
         except Exception as e:
             print(f"發生錯誤: {e}")
     
@@ -309,7 +308,7 @@ def find_and_process_images(directory, args):
         del_tag = [tag for tag, count in tag_dict.items() if tag != 'caption_count' and count > tag_dict['caption_count'] * 0.5]
         print(del_tag)
         
-        for image_path in tqdm(image_paths, desc="應用過濾標籤"):
+        for image_path in tqdm(image_paths, desc="打自然語言標"):
             try:
                 wd_caption = wd_captions[image_path]
                 tags = wd_caption.split(', ')
