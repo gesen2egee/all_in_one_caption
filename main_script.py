@@ -13,15 +13,13 @@ import random
 import traceback
 import json
 import fnmatch
-from aesthetic_predictor_v2_5 import convert_v2_5_from_siglip
 from imgutils.tagging import get_wd14_tags, tags_to_text
-from imgutils.validate import anime_completeness
 from transformers import AutoProcessor, AutoModelForCausalLM
 import traceback
 from datetime import datetime, timedelta
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-model_id = 'yayayaaa/florence-2-large-ft-moredetailed'
+model_id = 'MiaoshouAI/Florence-2-base-PromptGen-v1.5'
 model = AutoModelForCausalLM.from_pretrained(model_id, trust_remote_code=True).eval().to(device).half()
 processor = AutoProcessor.from_pretrained(model_id, trust_remote_code=True)
 
@@ -94,13 +92,12 @@ def transform_caption(caption):
         if tags_dict.get(tag, "") and tag in select_tags:
             if tag not in transformed_tags:
                 transformed_tags.append(f'{tag} means {tags_dict.get(tag, "").lower().replace(".", "")}')
-    #    else:
-    #        if tag not in original_tags:
-    #            original_tags.append(tag)
-    #if 'solo' in caption:
-    #    original_tags = categorize_and_combine(original_tags)
-    random.shuffle(transformed_tags)
-    return ', '.join(transformed_tags)
+        else:
+            if tag not in original_tags:
+                original_tags.append(tag)
+    random.shuffle(transformed_tags) 
+    random.shuffle(original_tags) 
+    return ', '.join(transformed_tags + original_tags)
 
 def run_example(task_prompt, image, text_input=None):
     if text_input is None:
@@ -165,7 +162,7 @@ def generate_special_text(image_path, args, features=None, chars=None):
     boorutag = ""
     artisttag = ""
     styletag = None
-    chartag_from_folder = ""
+    name_from_folder = ""
     concept_tag = ""
     # 查找 boorutag 文件路徑
     for ext in ['.jpg.boorutag', '.png.boorutag']:
@@ -176,11 +173,11 @@ def generate_special_text(image_path, args, features=None, chars=None):
 
     chartags = set()
 
-    # 獲取 parent_folder 並添加 chartag_from_folder
+    # 獲取 parent_folder 並添加 name_from_folder
     parent_folder = Path(image_path).parent.name
     if args.folder_name and "_" in parent_folder and parent_folder.split("_")[0].isdigit():
-        chartag_from_folder = parent_folder.split('_')[1].replace('_', ' ').strip().lower()
-        chartags.add(chartag_from_folder)            
+        name_from_folder = parent_folder.split('_')[1].replace('_', ' ').strip().lower()
+        name_from_folder = f"it is an image of {name_from_folder}"
             
     # 處理 boorutag 文件內容
     if boorutag_path:
@@ -214,39 +211,38 @@ def generate_special_text(image_path, args, features=None, chars=None):
     chartags = list(chartags)
     random.shuffle(chartags)
 
-    if chartag_from_folder and features and ("solo" in features or "solo_focus" in features):
-        return f"{chartag_from_folder}", ', '.join(chartags), boorutag, artisttag
+    if name_from_folder and features and ("solo" in features or "solo_focus" in features):
+        return f"{name_from_folder}", ', '.join(chartags), boorutag, artisttag
 
     if len(chartags) > 3:
         chartags = []
     
-    if not chartag_from_folder and features and ("solo" in features or "solo_focus" in features):
-        return f"{' '.join(chartags)}" if chartags else "", ', '.join(chartags), boorutag, artisttag
+    if not name_from_folder and features and ("solo" in features or "solo_focus" in features):
+        return f"{name_from_folder}, {' '.join(chartags)}" if chartags else "", ', '.join(chartags), boorutag, artisttag
 
-    return f"{', '.join(chartags)}", ', '.join(chartags), boorutag, artisttag
+    return f"{name_from_folder}, {' and '.join(chartags)}", ', '.join(chartags), boorutag, artisttag
     
-def process_image(image_path, folder_chartag, args):
+def resize_image(image_path, max_size=448):
+    """
+    縮小圖像使其最大邊不超過 max_size，返回縮小後的圖像數據
+    """
+    image = Image.open(image_path)
+    if image.mode != "RGB":
+        image = image.convert("RGB")
+    if max(image.width, image.height) > max_size:
+        if image.width > image.height:
+            new_width = max_size
+            new_height = int(max_size * image.height / image.width)
+        else:
+            new_height = max_size
+            new_width = int(max_size * image.width / image.height)
+        image = image.resize((new_width, new_height), Image.LANCZOS)
+    return image
+    
+def process_image(image_path, args, wd_caption):
     """
     處理單個圖片，獲取標籤並存儲。修改以支持多進程數據傳遞。
     """
-
-    def resize_image(image_path, max_size=448):
-        """
-        縮小圖像使其最大邊不超過 max_size，返回縮小後的圖像數據
-        """
-        image = Image.open(image_path)
-        if image.mode != "RGB":
-            image = image.convert("RGB")
-        if max(image.width, image.height) > max_size:
-            if image.width > image.height:
-                new_width = max_size
-                new_height = int(max_size * image.height / image.width)
-            else:
-                new_height = max_size
-                new_width = int(max_size * image.width / image.height)
-            image = image.resize((new_width, new_height), Image.LANCZOS)
-        return image
-
     tag_file_path = Path(image_path).with_suffix('').with_suffix('.txt')
 
     # 檢查文件最後修改時間，如果在一周內則略過
@@ -257,27 +253,24 @@ def process_image(image_path, folder_chartag, args):
             return None, None, 'skipped'   
     try:
         image = resize_image(image_path)
-        rating, features, chars = get_wd14_tags(image, character_threshold=0.6, general_threshold=0.2682, drop_overlap=True)
-        wd14_caption = tags_to_text(features, use_escape=False, use_spaces=True)
-        special_text, chartags, boorutag, artisttag = generate_special_text(image_path, args, features, chars)
-        ratingtag = max(rating, key=rating.get)
-        wd14_caption = wd14_caption + ', ' + boorutag
-        wd14_caption = transform_caption(wd14_caption)
         more_detailed_caption, _ = run_example('<MORE_DETAILED_CAPTION>', image) 
-        special_text = ' '.join([text.strip() for text in special_text.split(',') if text.strip()])
         tags_text = (
-            f"{special_text}, {more_detailed_caption}, {wd14_caption}"
-        )     
+            f"{wd_caption}, {more_detailed_caption}"
+        )
+
+        parent_folder = Path(image_path).parent.name
+        if args.folder_name and "_" in parent_folder and parent_folder.split("_")[0].isdigit():
+            tags_text = parent_folder.split('_')[1].replace('_', ' ').strip().lower() + ', ' + tags_text
+        
         with open(tag_file_path, 'w', encoding='utf-8') as f:
             f.write(tags_text.lower())
             
         try:
-            npz_path = Path(image_path).with_suffix('') 
-            if npz_path.name.endswith("_te"):
-                npz_path = npz_path.with_suffix(".npz") 
-                if npz_path.exists():
-                    os.remove(npz_path)
-                    print(f"已刪除檔案: {npz_path}")
+            npz_pattern = f"{Path(image_path).stem}*_te.npz"
+            for npz_file in Path(image_path).parent.glob(npz_pattern):
+                if npz_file.exists():
+                    os.remove(npz_file)
+                    print(f"已刪除檔案: {npz_file}")
         except Exception as e:
             print(f"發生錯誤: {e}")
     
@@ -288,12 +281,11 @@ def process_image(image_path, folder_chartag, args):
 def find_and_process_images(directory, args):
     directory = directory.replace('\\', '/')
     extensions = ["*.jpg", "*.png", "*.jpeg", "*.webp", "*.bmp"]
-    all_final_scores = []
+    wd_captions = {}
+    
     for root, dirs, files in os.walk(directory):
-        folder_chartag = {}
         image_paths = []
-        image_infos_list = []
-        folder_final_scores = []
+        tag_dict = {}
         for ext in extensions:
             for file in files:
                 if fnmatch.fnmatchcase(file, ext) or fnmatch.fnmatchcase(file, ext.upper()):
@@ -301,7 +293,29 @@ def find_and_process_images(directory, args):
 
         for image_path in tqdm(image_paths, desc=f"處理圖片 {root}"):
             try:
-                process_image(image_path, folder_chartag, args)  
+                image = resize_image(image_path)
+                rating, features, _, _ = get_wd14_tags(image, character_threshold=0.6, general_threshold=0.27, drop_overlap=True, fmt=('rating', 'general', 'character', 'embedding'))      
+                wd_caption = tags_to_text(features, use_escape=False, use_spaces=True)
+                wd_captions[image_path] = wd_caption
+                tags = wd_caption.split(', ')
+                for tag in tags:
+                    tag_dict[tag] = tag_dict.get(tag, 0) + 1
+                tag_dict['caption_count'] = tag_dict.get('caption_count', 0) + 1
+                
+            except Exception as e:
+                print(f"Failed to process image {image_path}: {e}")
+                traceback.print_exc()
+
+        del_tag = [tag for tag, count in tag_dict.items() if tag != 'caption_count' and count > tag_dict['caption_count'] * 0.5]
+        print(del_tag)
+        
+        for image_path in tqdm(image_paths, desc="應用過濾標籤"):
+            try:
+                wd_caption = wd_captions[image_path]
+                tags = wd_caption.split(', ')
+                filtered_tags = [tag for tag in tags if not any(d_tag in tag for d_tag in del_tag) or not args.del_tag]
+                wd_caption = ', '.join(filtered_tags)
+                process_image(image_path, args, wd_caption)
             except Exception as e:
                 print(f"Failed to process image {image_path}: {e}")
                 traceback.print_exc()
@@ -309,6 +323,7 @@ def find_and_process_images(directory, args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="圖片標籤處理腳本")
     parser.add_argument("--folder_name", action="store_true", help="使用目錄名當作角色名")
+    parser.add_argument("--del_tag", action="store_true", help="自動刪除子目錄中的wd tag多數標( > 50%)")
     parser.add_argument("--continue_caption", type=int, default=0, help="忽略n天內打的標")
     parser.add_argument("directory", type=str, help="處理目錄地址")
     args = parser.parse_args()
