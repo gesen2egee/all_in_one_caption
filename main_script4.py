@@ -23,9 +23,12 @@ from imgutils.ocr import detect_text_with_ocr
 import os
 from transformers import AutoProcessor, SiglipModel
 import shutil
+from transparent_background import Remover
+
 os.environ['ONNX_MODE'] = 'gpu'
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+remover = Remover(mode='base-nightly', jit=True, device=device)
 model_id = 'MiaoshouAI/Florence-2-large-PromptGen-v1.5' #'yayayaaa/florence-2-large-ft-moredetailed' 
 model = AutoModelForCausalLM.from_pretrained(model_id, trust_remote_code=True).eval().to(device).half()
 processor = AutoProcessor.from_pretrained(model_id, trust_remote_code=True)
@@ -223,15 +226,22 @@ def process_image(image_path, args, wd_caption, special_text, wd_features, thres
     try:
         image = resize_image(image_path)
         features, keep_tags = process_features(wd_features)
-        if threshold > 0.5:
+        if threshold > 0.6:
             keep_tags.append(special_text)
             random.shuffle(keep_tags)
             tags_text = f"{aesthetic_tag}, {', '.join(keep_tags)}" 
-        else:
+        elif threshold > 0.3:
+            caption, _ = run_example('<CAPTION>', image)
+            keep_tags.append(special_text)
+            keep_tags.append(caption)
             random.shuffle(keep_tags)
+            tags_text = f"{aesthetic_tag}, {', '.join(keep_tags)}" 
+        else:
             caption, _ = run_example('<DETAILED_CAPTION>', image)
             caption = re.sub(r',', f', {special_text},', caption, count=1)
-            tags_text = f"{aesthetic_tag}, {caption}, {', '.join(keep_tags)}"
+            keep_tags.append(caption)
+            random.shuffle(keep_tags)
+            tags_text = f"{aesthetic_tag}, {', '.join(keep_tags)}"
         tags = [tag.strip() for tag in tags_text.split(',')]
         tags_text = ', '.join(filter(None, tags))
 
@@ -270,13 +280,20 @@ def move_images_to_folders(src_folder, normalized_differences):
 def find_and_process_images(directory, args):
     directory = directory.replace('\\', '/')
     extensions = ["*.jpg", "*.png", "*.jpeg", "*.webp", "*.bmp"]
+    background_tags = {
+        "aqua_background", "beige_background", "black_background", "blue_background",
+        "brown_background", "green_background", "grey_background", "light_brown_background",
+        "orange_background", "pink_background", "purple_background", "red_background",
+        "sepia_background", "tan_background", "white_background", "yellow_background",
+        "gradient_background", "two-tone_background", "simple_background"
+    }
     special_texts, wd_captions, wd_features, aesthetic_tags = {}, {}, {}, {}
     for root, dirs, files in os.walk(directory):
         image_paths = []
         tag_dict = {}
         embeddings, core_embeddings = {}, []
         del_tag = []
-        differences = []
+        differences, means = [], []
         for ext in extensions:
             for file in files:
                 if fnmatch.fnmatchcase(file, ext) or fnmatch.fnmatchcase(file, ext.upper()):
@@ -286,6 +303,21 @@ def find_and_process_images(directory, args):
             try:
                 image = resize_image(image_path)
                 rating, features, chars, embedding = get_wd14_tags(image, character_threshold=0.6, general_threshold=0.27, drop_overlap=True, fmt=('rating', 'general', 'character', 'embedding'))
+
+                if any(tag in features for tag in background_tags) and args.segment:
+                    try:
+                        with Image.open(image_path) as img:
+                            if img.mode == 'RGBA':
+                                img = img.convert('RGB') 
+                            out = remover.process(img, type='white')
+                            out.save(image_path)
+                        image = resize_image(image_path)    
+                        rating, features, chars, embedding = get_wd14_tags(image, character_threshold=0.6, general_threshold=0.27, drop_overlap=True, fmt=('rating', 'general', 'character', 'embedding'))
+                        if "simple_background" in features:
+                            del features["simple_background"]
+                    except Exception as e:
+                        print(f"Failed to segment image {image_path}: {e}")
+                        traceback.print_exc()
                 features = drop_blacklisted_tags(features)
                 wd_caption = tags_to_text(features, use_escape=False, use_spaces=True)
                 special_text, _, boorutag, artisttag = generate_special_text(image_path, args, features, chars)
@@ -316,23 +348,21 @@ def find_and_process_images(directory, args):
                 try:
                     diff = difference(core_embeddings, embeddings[image_path])
                     differences.append((image_path, diff))  # 保存 (image_path, diff)
+                    modified_embedding = np.where(embeddings[image_path] > 0.27, embeddings[image_path], 0)
+                    means.append((image_path, modified_embedding.mean()))
                 except Exception as e:
                     print(f"處理圖片 {image_path} 時出錯: {e}")
         
             sorted_differences = sorted(differences, key=lambda x: x[1]) 
+            sorted_means = sorted(means, key=lambda x: x[1]) 
             n = len(sorted_differences)
-            normalized_differences = {}
+            normalized_differences, normalized_means = {}, {}
             for i, (image_path, diff) in enumerate(sorted_differences):
                 norm_diff = 1 - (i / (n - 1)) if n > 1 else 1
-                #if norm_diff > 0.6:
-                #    if "simple_background" in wd_features[image_path]:
-                #        norm_diff = norm_diff - 0.15
-                #    else:
-                #        norm_diff = norm_diff + 0.15
-                #    if "solo" not in wd_features[image_path]:
-                #        norm_diff = norm_diff - 0.15
                 normalized_differences[image_path] = norm_diff
-            #move_images_to_folders(directory, normalized_differences)
+            for i, (image_path, mean) in enumerate(sorted_means):
+                norm_mean = i / (n - 1) if n > 1 else 1
+                normalized_means[image_path] = norm_mean
 
         for image_path in tqdm(image_paths, desc="打自然語言標"):
             try:
@@ -341,9 +371,6 @@ def find_and_process_images(directory, args):
                 threshold = normalized_differences[image_path]
                 features = wd_features[image_path]
                 less_tag = []
-                #for tag in features.keys():
-                #    if features[tag] < threshold * 0.85:
-                #        less_tag.append(tag)
                 filtered_tags = [tag for tag in tags if not any(d_tag in tag for d_tag in less_tag + del_tag)]
                 wd_caption =  ', '.join(filtered_tags)
                 process_image(image_path, args, wd_caption, special_texts[image_path], features, threshold, aesthetic_tags[image_path])
@@ -351,11 +378,11 @@ def find_and_process_images(directory, args):
                 print(f"Failed to process image {image_path}: {e}")
                 traceback.print_exc()
 
-        
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="圖片標籤處理腳本")
-    parser.add_argument("--folder_name", action="store_true", help="使用目錄名當作角色名")
-    parser.add_argument("--del_tag", action="store_true", help="自動刪除子目錄中的wd tag多數標( > 50%)")
+    parser.add_argument("--folder_name", action="store_true", help="使用目錄名當作觸發詞")
+    parser.add_argument("--segment", action="store_true", help="自動刪除簡易背景")
+    parser.add_argument("--del_tag", action="store_true", help="自動刪除子目錄中的wd tag多數標( > 70%)")
     parser.add_argument("--continue_caption", type=int, default=0, help="忽略n天內打的標")
     parser.add_argument("directory", type=str, help="處理目錄地址")
     args = parser.parse_args()
