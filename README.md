@@ -13,6 +13,19 @@ pip install -r requirements.txt
 
 
 
+(更新)
+
+
+WD + 新的florence-2微調自然語言
+
+使用 main_script4.py
+
+python main_script4.py "資料集目錄" --folder_name  
+
+--folder_name 用子資料夾數字後面的詞當作txt的觸發詞
+--del_tag 刪除出現比例>70%的標
+--segment 自動將簡單背景圖轉換成白背景(記得備分)
+
 
 (更新)
 
