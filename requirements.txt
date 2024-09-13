@@ -15,3 +15,4 @@ dghs-imgutils[gpu]
 timm
 openpyxl
 faiss
+transparent_background
