@@ -206,7 +206,7 @@ def process_features(features: dict) -> (dict, str):
         else:
             keys_to_delete.append(key.replace('_', ' '))
     keys_to_delete = [tag for tag in keys_to_delete if random.random() > 0.7]
-    keep_tags = [tag for tag in keep_tags if random.random() > 0.3]
+    keep_tags = [tag for tag in keep_tags if random.random()]
     keep_tags = keep_tags + keys_to_delete
         
     return features, keep_tags
