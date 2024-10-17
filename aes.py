@@ -28,7 +28,7 @@ def process_image(image_path):
             first_line = f.readline().strip()
             try:
                 score = float(first_line)
-                #return score, ''
+                return score
             except ValueError:
                 print(f"Warning: Could not convert {first_line} to float.")
 
@@ -45,11 +45,17 @@ def process_image(image_path):
     anime_score = min(get_aesthetic_score(image), 1)
     db_confidence = anime_dbaesthetic(image, fmt='confidence')
     db_score = min(1 - max(db_confidence["worst"], db_confidence["low"], db_confidence["normal"]), 1)
-    completeness_score = min(anime_completeness_score(image, model_name="caformer_s36_v2-beta")["polished"], 1)
-    lapl_score = max((500 - laplacian_score(image)), 0) / 1500
-
+    anime_completeness = anime_completeness_score(image, model_name="caformer_s36_v2-beta")
+    completeness_score = min(1 - max(anime_completeness["rough"], anime_completeness["monochrome"]), 1)
+    
+    lapl_score = laplacian_score(image)
     # 計算最後的分數
-    score = max(completeness_score, min(db_score, aes_score, anime_score), 0.4) * min((((db_score + aes_score + anime_score) / 3) + ((db_score + aes_score) / 2)) / 2, (db_score + aes_score) / 2) * (1 - lapl_score)
+    mean_score = (db_score + aes_score + anime_score + completeness_score) / 4
+    max_score = max(db_score , aes_score , anime_score)
+    min_score = min(db_score , aes_score , anime_score)
+    lapl_score = max(1 - (max((500 - lapl_score), 0) / 1500), min_score)
+    # 計算最後的分數
+    score = lapl_score * ((min_score + mean_score + (max_score * 2)) / 4)
     return score
 
 def get_aesthetic_tag(score):
@@ -58,11 +64,14 @@ def get_aesthetic_tag(score):
     
 def save_score_to_file(image_path, score):
     # 創建與圖片同名的 .weight 文件並保存分數
-    weight_file_path = image_path.with_suffix('.weight2')
+    weight_file_path = image_path.with_suffix('.weight')
     with open(weight_file_path, 'w') as f:
         f.write(f'{score}')
 
 def process_single_image(image_path):
+    weight_file_path = Path(image_path).with_suffix('.weight')
+    #if weight_file_path.exists(): 
+    #    return
     score = process_image(image_path)
     save_score_to_file(image_path, score)
     tag = get_aesthetic_tag(score * 10)
