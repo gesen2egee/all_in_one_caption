@@ -8,10 +8,11 @@ from tqdm import tqdm
 from aesthetic_predictor_v2_5 import convert_v2_5_from_siglip
 from PIL import Image
 from imgutils.metrics import get_aesthetic_score, anime_dbaesthetic, laplacian_score
-from imgutils.validate import anime_completeness_score
+from imgutils.validate import anime_completeness_score, anime_classify_score
 import math
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import os
+import random
 
 # 設定 GPU 模式
 os.environ['ONNX_MODE'] = 'gpu'
@@ -47,15 +48,17 @@ def process_image(image_path):
     db_score = min(1 - max(db_confidence["worst"], db_confidence["low"], db_confidence["normal"]), 1)
     anime_completeness = anime_completeness_score(image, model_name="caformer_s36_v2-beta")
     completeness_score = min(1 - max(anime_completeness["rough"], anime_completeness["monochrome"]), 1)
+    anime_classify = anime_classify_score(image, model_name="caformer_s36_v1.3_focal")
+    classify_score = min(1 - max(anime_classify["comic"], anime_classify["not_painting"]), 1)
     
     lapl_score = laplacian_score(image)
     # 計算最後的分數
     mean_score = (db_score + aes_score + anime_score + completeness_score) / 4
-    max_score = max(db_score , aes_score , anime_score)
-    min_score = min(db_score , aes_score , anime_score)
+    max_score = max(db_score , aes_score)
+    min_score = min(db_score , aes_score)
     lapl_score = max(1 - (max((500 - lapl_score), 0) / 1500), min_score)
     # 計算最後的分數
-    score = lapl_score * ((min_score + mean_score + (max_score * 2)) / 4)
+    score = lapl_score * ((min_score + mean_score + (max_score * 2)) / 4) * classify_score
     return score
 
 def get_aesthetic_tag(score):
@@ -89,7 +92,7 @@ def process_single_image(image_path):
         shutil.move(str(txt_file), str(target_image_path.with_suffix('.txt')))
 
     # 生成 .weight 文件路徑並移動
-    weight_file = image_path.with_suffix('.weight')
+    weight_file = image_path.with_suffix('.weight3')
     if weight_file.exists():
         shutil.move(str(weight_file), str(target_image_path.with_suffix('.weight')))
 
@@ -101,12 +104,12 @@ def process_all_images(base_path, max_workers=4):
     image_paths = []
     for ext in extensions:
         image_paths.extend(base_path.rglob(ext))  # 使用 rglob 來遞歸收集所有子資料夾中的圖片
-    
+    image_paths
     # 如果沒有圖片，則直接返回
     if not image_paths:
         print("No images found.")
         return
-
+    random.shuffle(image_paths)
     # 使用多進程處理所有圖片
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(process_single_image, image_path): image_path for image_path in image_paths}
