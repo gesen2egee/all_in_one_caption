@@ -1,13 +1,20 @@
+# PyTorch
 torch==2.2.2; platform_system != "Windows"
 https://download.pytorch.org/whl/cu121/torch-2.2.2%2Bcu121-cp311-cp311-win_amd64.whl; platform_system == "Windows" and python_version == "3.11"
 https://download.pytorch.org/whl/cu121/torch-2.2.2%2Bcu121-cp310-cp310-win_amd64.whl; platform_system == "Windows" and python_version == "3.10"
+
+# FlashAttention (Florence-2, Phi-3-Vision)
+flash-attn==2.6.3; platform_system == "Linux"
+https://github.com/bdashore3/flash-attention/releases/download/v2.6.3/flash_attn-2.6.3+cu123torch2.2.2cxx11abiFALSE-cp311-cp311-win_amd64.whl; platform_system == "Windows" and python_version == "3.11"
+https://github.com/bdashore3/flash-attention/releases/download/v2.6.3/flash_attn-2.6.3+cu123torch2.2.2cxx11abiFALSE-cp310-cp310-win_amd64.whl; platform_system == "Windows" and python_version == "3.10"
+
 transformers==4.43.3
-Pillow
+pillow==11.0.0
 requests
 tqdm
-accelerate
+accelerate==1.0.1
 sentencepiece
-bitsandbytes
+bitsandbytes==0.44.1
 onnxruntime==1.18.0
 onnxruntime-gpu==1.18.0
 aesthetic-predictor-v2-5
@@ -15,3 +22,6 @@ dghs-imgutils[gpu]
 timm
 openpyxl
 transparent_background
+huggingface-hub==0.26.2
+numpy==1.26.4
+faiss-cpu
